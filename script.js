@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showRestartButton();
     }
 
-    // --- 게임 로직 (checkForMatches 수정됨) --- //
+    // --- 게임 로직 (폭탄 기능 추가) --- //
     function startGame() {
         score = 0;
         timeLeft = initialTime;
@@ -147,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gem.style.backgroundImage = `url('${gemImages[imageIndex]}')`;
             gem.dataset.image = gemImages[imageIndex];
             gem.dataset.id = i;
+            gem.dataset.isBomb = 'false'; // 폭탄 속성 추가
             gem.addEventListener('click', onGemClick);
             gameBoard.appendChild(gem);
             board.push(gem);
@@ -171,6 +172,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function onGemClick(e) {
         if (!isGameActive) return;
         const clickedGem = e.target;
+
+        // 폭탄 클릭 처리
+        if (clickedGem.dataset.isBomb === 'true') {
+            detonateBomb(clickedGem);
+            return;
+        }
+
         if (!selectedGem) {
             selectedGem = clickedGem;
             selectedGem.classList.add('selected');
@@ -181,6 +189,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 selectedGem = null;
                 return;
             }
+
+            // 폭탄과는 위치를 바꿀 수 없음
+            if (board[secondGemId].dataset.isBomb === 'true') {
+                selectedGem.classList.remove('selected');
+                selectedGem = null;
+                return;
+            }
+
             const isAdjacent = Math.abs(firstGemId - secondGemId) === 1 || Math.abs(firstGemId - secondGemId) === boardSize;
             if (isAdjacent) {
                 swapGems(selectedGem, clickedGem);
@@ -199,13 +215,52 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function detonateBomb(bombGem) {
+        const bombId = parseInt(bombGem.dataset.id);
+        const row = Math.floor(bombId / boardSize);
+        const col = bombId % boardSize;
+        const gemsToRemove = new Set();
+
+        // 가로, 세로줄 보석 추가
+        for (let i = 0; i < boardSize; i++) {
+            gemsToRemove.add(board[i * boardSize + col]); // 세로
+            gemsToRemove.add(board[row * boardSize + i]); // 가로
+        }
+
+        processMatches(gemsToRemove, false);
+    }
+
     function swapGems(gem1, gem2) {
-        const tempImage = gem1.style.backgroundImage;
-        gem1.style.backgroundImage = gem2.style.backgroundImage;
-        gem2.style.backgroundImage = tempImage;
-        const tempImageData = gem1.dataset.image;
+        // 폭탄 상태도 함께 스왑
+        const isBomb1 = gem1.dataset.isBomb === 'true';
+        const isBomb2 = gem2.dataset.isBomb === 'true';
+
+        if (isBomb1) {
+            gem2.classList.add('bomb');
+            gem2.dataset.isBomb = 'true';
+            gem2.style.backgroundImage = '';
+        } else {
+            gem2.classList.remove('bomb');
+            gem2.dataset.isBomb = 'false';
+            gem2.style.backgroundImage = gem1.style.backgroundImage;
+            gem2.dataset.image = gem1.dataset.image;
+        }
+
+        if (isBomb2) {
+            gem1.classList.add('bomb');
+            gem1.dataset.isBomb = 'true';
+            gem1.style.backgroundImage = '';
+        } else {
+            gem1.classList.remove('bomb');
+            gem1.dataset.isBomb = 'false';
+            gem1.style.backgroundImage = gem2.style.backgroundImage;
+            gem1.dataset.image = gem1.dataset.image;
+        }
+
+        // 원래 이미지 정보 스왑 (폭탄이 아닐 경우를 위해)
+        const tempImage = gem1.dataset.image;
         gem1.dataset.image = gem2.dataset.image;
-        gem2.dataset.image = tempImageData;
+        gem2.dataset.image = tempImage;
     }
 
     function checkForInitialMatches() {
@@ -226,96 +281,132 @@ document.addEventListener('DOMContentLoaded', () => {
         comboGauge.classList.remove('running');
     }
 
-    // 최종 수정된 매치 확인 로직
+    function findMatches() {
+        const matches = { threes: [], fours: [], fives: [] };
+        const processed = new Set(); // 중복 처리를 막기 위한 Set
+
+        // 가로/세로 동시 확인
+        for (let i = 0; i < boardSize; i++) {
+            for (let j = 0; j < boardSize; j++) {
+                const horzKey = `h-${i}-${j}`;
+                const vertKey = `v-${i}-${j}`;
+
+                // 가로 매치 확인
+                if (j < boardSize - 2 && !processed.has(horzKey)) {
+                    let hMatch = [board[i*boardSize+j], board[i*boardSize+j+1], board[i*boardSize+j+2]];
+                    if (hMatch.every(gem => gem && gem.dataset.image === hMatch[0].dataset.image && gem.dataset.isBomb === 'false')) {
+                        let k = 3;
+                        while (j + k < boardSize) {
+                            const nextGem = board[i*boardSize+j+k];
+                            if (nextGem && nextGem.dataset.image === hMatch[0].dataset.image && nextGem.dataset.isBomb === 'false') {
+                                hMatch.push(nextGem);
+                                k++;
+                            } else break;
+                        }
+                        if (hMatch.length >= 3) {
+                            const key = hMatch.length === 5 ? 'fives' : hMatch.length === 4 ? 'fours' : 'threes';
+                            matches[key].push(hMatch);
+                            hMatch.forEach((gem, idx) => processed.add(`h-${i}-${j+idx}`));
+                        }
+                    }
+                }
+
+                // 세로 매치 확인
+                if (i < boardSize - 2 && !processed.has(vertKey)) {
+                    let vMatch = [board[i*boardSize+j], board[(i+1)*boardSize+j], board[(i+2)*boardSize+j]];
+                    if (vMatch.every(gem => gem && gem.dataset.image === vMatch[0].dataset.image && gem.dataset.isBomb === 'false')) {
+                        let k = 3;
+                        while (i + k < boardSize) {
+                            const nextGem = board[(i+k)*boardSize+j];
+                            if (nextGem && nextGem.dataset.image === vMatch[0].dataset.image && nextGem.dataset.isBomb === 'false') {
+                                vMatch.push(nextGem);
+                                k++;
+                            } else break;
+                        }
+                        if (vMatch.length >= 3) {
+                            const key = vMatch.length === 5 ? 'fives' : vMatch.length === 4 ? 'fours' : 'threes';
+                            matches[key].push(vMatch);
+                            vMatch.forEach((gem, idx) => processed.add(`v-${i+idx}-${j}`));
+                        }
+                    }
+                }
+            }
+        }
+        return matches;
+    }
+
     function checkForMatches(isInitial = false) {
+        const matches = findMatches();
         const gemsToRemove = new Set();
-        const rowsToClear = new Set();
-        const colsToClear = new Set();
+        const bombsToCreate = [];
 
-        // 4개 가로 매치 찾기
-        for (let i = 0; i < boardSize; i++) {
-            for (let j = 0; j < boardSize - 3; j++) {
-                const indices = [i * boardSize + j, i * boardSize + j + 1, i * boardSize + j + 2, i * boardSize + j + 3];
-                const firstGem = board[indices[0]];
-                if (firstGem.style.backgroundImage !== 'none' && indices.every(index => board[index].dataset.image === firstGem.dataset.image)) {
-                    rowsToClear.add(i);
-                    j += 3;
-                }
-            }
-        }
-
-        // 4개 세로 매치 찾기
-        for (let j = 0; j < boardSize; j++) {
-            for (let i = 0; i < boardSize - 3; i++) {
-                const indices = [i * boardSize + j, (i + 1) * boardSize + j, (i + 2) * boardSize + j, (i + 3) * boardSize + j];
-                const firstGem = board[indices[0]];
-                if (firstGem.style.backgroundImage !== 'none' && indices.every(index => board[index].dataset.image === firstGem.dataset.image)) {
-                    colsToClear.add(j);
-                    i += 3;
-                }
-            }
-        }
-
-        // 4개 매치로 지워질 보석들을 Set에 추가
-        rowsToClear.forEach(row => {
-            for (let k = 0; k < boardSize; k++) gemsToRemove.add(board[row * boardSize + k]);
-        });
-        colsToClear.forEach(col => {
-            for (let k = 0; k < boardSize; k++) gemsToRemove.add(board[k * boardSize + col]);
+        // 5개 매치 처리
+        matches.fives.forEach(match => {
+            match.forEach(gem => gemsToRemove.add(gem));
+            bombsToCreate.push(match[2]); // 가운데 보석 위치에 폭탄 생성
         });
 
-        // 3개 매치 확인 (이미 지워질 보석은 제외)
-        for (let i = 0; i < boardSize; i++) {
-            for (let j = 0; j < boardSize - 2; j++) {
-                const indices = [i * boardSize + j, i * boardSize + j + 1, i * boardSize + j + 2];
-                if (indices.some(index => gemsToRemove.has(board[index]))) continue;
-
-                const firstGem = board[indices[0]];
-                if (firstGem.style.backgroundImage !== 'none' &&
-                    board[indices[1]].dataset.image === firstGem.dataset.image &&
-                    board[indices[2]].dataset.image === firstGem.dataset.image) {
-                    indices.forEach(index => gemsToRemove.add(board[index]));
-                    j += 2;
-                }
+        // 4개 매치 처리
+        matches.fours.forEach(match => {
+            const isHorizontal = parseInt(match[1].dataset.id) - parseInt(match[0].dataset.id) === 1;
+            if (isHorizontal) {
+                const row = Math.floor(parseInt(match[0].dataset.id) / boardSize);
+                for (let k = 0; k < boardSize; k++) gemsToRemove.add(board[row * boardSize + k]);
+            } else {
+                const col = parseInt(match[0].dataset.id) % boardSize;
+                for (let k = 0; k < boardSize; k++) gemsToRemove.add(board[k * boardSize + col]);
             }
-        }
-        for (let j = 0; j < boardSize; j++) {
-            for (let i = 0; i < boardSize - 2; i++) {
-                const indices = [i * boardSize + j, (i + 1) * boardSize + j, (i + 2) * boardSize + j];
-                if (indices.some(index => gemsToRemove.has(board[index]))) continue;
+        });
 
-                const firstGem = board[indices[0]];
-                if (firstGem.style.backgroundImage !== 'none' &&
-                    board[indices[1]].dataset.image === firstGem.dataset.image &&
-                    board[indices[2]].dataset.image === firstGem.dataset.image) {
-                    indices.forEach(index => gemsToRemove.add(board[index]));
-                    i += 2;
-                }
-            }
-        }
+        // 3개 매치 처리
+        matches.threes.forEach(match => {
+            match.forEach(gem => gemsToRemove.add(gem));
+        });
 
-        // 지울 보석이 있으면 점수 계산 및 화면 처리
         if (gemsToRemove.size > 0) {
-            if (!isInitial) {
-                clearTimeout(comboTimerId);
-                combo = Math.min(combo + 1, maxCombo);
-                const comboBonus = combo * 10;
-                score += (gemsToRemove.size * 10) + comboBonus;
-                scoreElement.textContent = score;
-                comboElement.textContent = combo;
-                updateGapToFirst();
-
-                comboGaugeContainer.classList.remove('hidden');
-                comboGauge.classList.remove('running');
-                void comboGauge.offsetWidth; // Reflow
-                comboGauge.classList.add('running');
-                comboTimerId = setTimeout(resetCombo, comboTimeout);
-            }
-            gemsToRemove.forEach(gem => { gem.style.backgroundImage = 'none'; gem.dataset.image = ''; });
-            setTimeout(shiftAndFill, 300);
+            // 폭탄이 생성될 위치의 보석은 제거 목록에서 제외
+            bombsToCreate.forEach(bombGem => gemsToRemove.delete(bombGem));
+            processMatches(gemsToRemove, isInitial);
+            // 폭탄 생성
+            bombsToCreate.forEach(gem => {
+                gem.classList.add('bomb');
+                gem.dataset.isBomb = 'true';
+                gem.dataset.image = 'bomb'; // 이미지 데이터 변경
+                gem.style.backgroundImage = '';
+            });
             return true;
         }
         return false;
+    }
+
+    function processMatches(gemsToRemove, isInitial) {
+        if (gemsToRemove.size === 0) return;
+
+        if (!isInitial) {
+            clearTimeout(comboTimerId);
+            combo = Math.min(combo + 1, maxCombo);
+            const comboBonus = combo * 10;
+            score += (gemsToRemove.size * 10) + comboBonus;
+            scoreElement.textContent = score;
+            comboElement.textContent = combo;
+            updateGapToFirst();
+
+            comboGaugeContainer.classList.remove('hidden');
+            comboGauge.classList.remove('running');
+            void comboGauge.offsetWidth; // Reflow
+            comboGauge.classList.add('running');
+            comboTimerId = setTimeout(resetCombo, comboTimeout);
+        }
+        
+        // 수정된 부분: 모든 보석(폭탄 포함)을 깨끗하게 초기화
+        gemsToRemove.forEach(gem => {
+            gem.classList.remove('bomb');
+            gem.dataset.isBomb = 'false';
+            gem.style.backgroundImage = 'none';
+            gem.dataset.image = '';
+        });
+
+        setTimeout(shiftAndFill, 300);
     }
 
     function shiftAndFill() {
@@ -329,8 +420,10 @@ document.addEventListener('DOMContentLoaded', () => {
             let emptyRow = -1;
             for (let i = boardSize - 1; i >= 0; i--) {
                 const index = i * boardSize + j;
-                if (board[index].style.backgroundImage === 'none' && emptyRow === -1) emptyRow = i;
-                if (board[index].style.backgroundImage !== 'none' && emptyRow !== -1) {
+                if (board[index].style.backgroundImage === 'none' && board[index].dataset.isBomb === 'false') {
+                    if(emptyRow === -1) emptyRow = i;
+                }
+                if ((board[index].style.backgroundImage !== 'none' || board[index].dataset.isBomb === 'true') && emptyRow !== -1) {
                     swapGems(board[index], board[emptyRow * boardSize + j]);
                     emptyRow--;
                 }
@@ -340,7 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function fillBoard() {
         for (let i = 0; i < boardSize * boardSize; i++) {
-            if (board[i].style.backgroundImage === 'none') {
+            if (board[i].style.backgroundImage === 'none' && board[i].dataset.isBomb === 'false') {
                 const imageIndex = Math.floor(Math.random() * gemImages.length);
                 board[i].style.backgroundImage = `url('${gemImages[imageIndex]}')`;
                 board[i].dataset.image = gemImages[imageIndex];
