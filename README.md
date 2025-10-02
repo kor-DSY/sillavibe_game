@@ -58,4 +58,4 @@ graph TD
 *   JavaScript
 
 ## 발표 자료 주소
-* 
+* https://gamma.app/docs/-wzy8hltevkl6yru
