@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>보석 게임</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>보석 게임</h1>
+
+    <div class="main-container">
+        <aside id="leaderboard">
+            <div id="reset-timer-container">
+                <p>초기화까지: <span id="reset-timer">00:00</span></p>
+            </div>
+            <h3>🏆 랭킹</h3>
+            <ol id="ranking-list"></ol>
+        </aside>
+
+        <div class="left-panel">
+            <div class="game-container">
+                <div id="game-board"></div>
+                <div class="info-panel">
+                    <div class="score-container">
+                        <h2>점수</h2>
+                        <p id="score">0</p>
+                        <div id="gap-container">
+                            <p class="gap-label">1위까지</p>
+                            <p class="gap-score">-</p>
+                        </div>
+                    </div>
+                    <div class="timer-container">
+                        <h2>시간</h2>
+                        <p id="timer">60</p>
+                    </div>
+                    <div class="combo-container">
+                        <h2>콤보</h2>
+                        <p id="combo">0</p>
+                    </div>
+                </div>
+            </div>
+            <div id="combo-gauge-container" class="hidden">
+                <div id="combo-gauge"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-over-overlay" class="hidden">
+        <div class="message-box">
+            <h2>게임 종료</h2>
+            <p>최종 점수: <span id="final-score">0</span></p>
+            <input type="text" id="player-name" placeholder="이름을 입력하세요" maxlength="10">
+            <div class="button-group">
+                <button id="save-score-button">점수 저장</button>
+                <button id="dont-save-button">저장하지 않기</button>
+                <button id="restart-button" class="hidden">다시 시작</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
