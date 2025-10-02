@@ -226,56 +226,75 @@ document.addEventListener('DOMContentLoaded', () => {
         comboGauge.classList.remove('running');
     }
 
-    // 매치 확인 로직 수정
+    // 최종 수정된 매치 확인 로직
     function checkForMatches(isInitial = false) {
         const gemsToRemove = new Set();
+        const rowsToClear = new Set();
+        const colsToClear = new Set();
 
-        // 가로/세로 4개 이상 매치를 먼저 확인하고 처리
-        // 가로
+        // 4개 가로 매치 찾기
         for (let i = 0; i < boardSize; i++) {
             for (let j = 0; j < boardSize - 3; j++) {
-                let match = [board[i*boardSize+j], board[i*boardSize+j+1], board[i*boardSize+j+2], board[i*boardSize+j+3]];
-                if (match.every(gem => gem.dataset.image === match[0].dataset.image && gem.style.backgroundImage !== 'none')) {
-                    for (let k = 0; k < boardSize; k++) {
-                        gemsToRemove.add(board[i * boardSize + k]);
-                    }
+                const indices = [i * boardSize + j, i * boardSize + j + 1, i * boardSize + j + 2, i * boardSize + j + 3];
+                const firstGem = board[indices[0]];
+                if (firstGem.style.backgroundImage !== 'none' && indices.every(index => board[index].dataset.image === firstGem.dataset.image)) {
+                    rowsToClear.add(i);
+                    j += 3;
                 }
             }
         }
-        // 세로
+
+        // 4개 세로 매치 찾기
         for (let j = 0; j < boardSize; j++) {
             for (let i = 0; i < boardSize - 3; i++) {
-                let match = [board[i*boardSize+j], board[(i+1)*boardSize+j], board[(i+2)*boardSize+j], board[(i+3)*boardSize+j]];
-                if (match.every(gem => gem.dataset.image === match[0].dataset.image && gem.style.backgroundImage !== 'none')) {
-                    for (let k = 0; k < boardSize; k++) {
-                        gemsToRemove.add(board[k * boardSize + j]);
-                    }
+                const indices = [i * boardSize + j, (i + 1) * boardSize + j, (i + 2) * boardSize + j, (i + 3) * boardSize + j];
+                const firstGem = board[indices[0]];
+                if (firstGem.style.backgroundImage !== 'none' && indices.every(index => board[index].dataset.image === firstGem.dataset.image)) {
+                    colsToClear.add(j);
+                    i += 3;
                 }
             }
         }
 
-        // 3개 매치 확인 (4개 매치로 인해 이미 지워질 보석은 제외)
-        if (gemsToRemove.size === 0) {
-            // 가로
-            for (let i = 0; i < boardSize; i++) {
-                for (let j = 0; j < boardSize - 2; j++) {
-                    let match = [board[i*boardSize+j], board[i*boardSize+j+1], board[i*boardSize+j+2]];
-                    if (match.every(gem => gem.dataset.image === match[0].dataset.image && gem.style.backgroundImage !== 'none')) {
-                        match.forEach(gem => gemsToRemove.add(gem));
-                    }
+        // 4개 매치로 지워질 보석들을 Set에 추가
+        rowsToClear.forEach(row => {
+            for (let k = 0; k < boardSize; k++) gemsToRemove.add(board[row * boardSize + k]);
+        });
+        colsToClear.forEach(col => {
+            for (let k = 0; k < boardSize; k++) gemsToRemove.add(board[k * boardSize + col]);
+        });
+
+        // 3개 매치 확인 (이미 지워질 보석은 제외)
+        for (let i = 0; i < boardSize; i++) {
+            for (let j = 0; j < boardSize - 2; j++) {
+                const indices = [i * boardSize + j, i * boardSize + j + 1, i * boardSize + j + 2];
+                if (indices.some(index => gemsToRemove.has(board[index]))) continue;
+
+                const firstGem = board[indices[0]];
+                if (firstGem.style.backgroundImage !== 'none' &&
+                    board[indices[1]].dataset.image === firstGem.dataset.image &&
+                    board[indices[2]].dataset.image === firstGem.dataset.image) {
+                    indices.forEach(index => gemsToRemove.add(board[index]));
+                    j += 2;
                 }
             }
-            // 세로
-            for (let j = 0; j < boardSize; j++) {
-                for (let i = 0; i < boardSize - 2; i++) {
-                    let match = [board[i*boardSize+j], board[(i+1)*boardSize+j], board[(i+2)*boardSize+j]];
-                    if (match.every(gem => gem.dataset.image === match[0].dataset.image && gem.style.backgroundImage !== 'none')) {
-                        match.forEach(gem => gemsToRemove.add(gem));
-                    }
+        }
+        for (let j = 0; j < boardSize; j++) {
+            for (let i = 0; i < boardSize - 2; i++) {
+                const indices = [i * boardSize + j, (i + 1) * boardSize + j, (i + 2) * boardSize + j];
+                if (indices.some(index => gemsToRemove.has(board[index]))) continue;
+
+                const firstGem = board[indices[0]];
+                if (firstGem.style.backgroundImage !== 'none' &&
+                    board[indices[1]].dataset.image === firstGem.dataset.image &&
+                    board[indices[2]].dataset.image === firstGem.dataset.image) {
+                    indices.forEach(index => gemsToRemove.add(board[index]));
+                    i += 2;
                 }
             }
         }
 
+        // 지울 보석이 있으면 점수 계산 및 화면 처리
         if (gemsToRemove.size > 0) {
             if (!isInitial) {
                 clearTimeout(comboTimerId);
