@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveScoreButton = document.getElementById('save-score-button');
     const dontSaveButton = document.getElementById('dont-save-button');
     const restartButton = document.getElementById('restart-button');
+    const startGameOverlay = document.getElementById('start-game-overlay');
+    const startGameButton = document.getElementById('start-game-button');
 
     // 게임 설정 및 상태 변수들 (이전과 동일)
     const boardSize = 8, initialTime = 60, maxCombo = 10, comboTimeout = 5000, MAX_LEADERBOARD_ENTRIES = 10;
@@ -445,10 +447,13 @@ document.addEventListener('DOMContentLoaded', () => {
     restartButton.addEventListener('click', startGame);
     saveScoreButton.addEventListener('click', handleSaveScore);
     dontSaveButton.addEventListener('click', showRestartButton);
+    startGameButton.addEventListener('click', () => {
+        startGameOverlay.classList.add('hidden');
+        startGame();
+    });
 
     // --- 초기화 실행 --- //
     checkAndHandleReset();
     updateLeaderboardDisplay();
     setInterval(updateResetCountdown, 1000);
-    startGame();
 });

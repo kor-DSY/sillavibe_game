@@ -105,7 +105,7 @@ h2 {
     display: none !important;
 }
 
-#game-over-overlay {
+#game-over-overlay, #start-game-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -155,11 +155,21 @@ h2 {
     flex-grow: 1; /* Make buttons equal width */
 }
 
-#save-score-button, #restart-button {
+#start-game-button {
+    padding: 10px 20px;
+    font-size: 1.1em;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#save-score-button, #restart-button, #start-game-button {
     background-color: #4CAF50;
 }
 
-#save-score-button:hover, #restart-button:hover {
+#save-score-button:hover, #restart-button:hover, #start-game-button:hover {
     background-color: #45a049;
 }
 
