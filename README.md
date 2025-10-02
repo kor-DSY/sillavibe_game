@@ -1,5 +1,11 @@
 # 보석 게임 (Jewel Game)
 
+## 🔗 게임 바로가기 (Play Game)
+
+[https://kor-dsy.github.io/sillavibe_game/](https://kor-dsy.github.io/sillavibe_game/)
+
+![게임 스크린샷](보석게임.png)
+
 ## 🎮 게임 설명
 
 보석 게임은 제한 시간 내에 최대한 많은 점수를 획득하는 것이 목표인 간단한 퍼즐 게임입니다. 같은 모양의 보석을 3개 이상 맞춰 점수를 올리고, 특별한 조합으로 더 높은 점수에 도전해보세요!
